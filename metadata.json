@@ -1,0 +1,6 @@
+{
+  "name": "Zorge 9 Penthouses",
+  "description": "A premium, highly interactive immersive landing page for elite luxury penthouses at Zorge 9, featuring split-screen views, digital preloaders, and an architectural planner.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
