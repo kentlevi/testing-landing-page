@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useMotionValue, useTransform } from 'motion/react';
 import Preloader from './components/Preloader';
 import CustomCursor from './components/CustomCursor';
 import HeroSection from './components/HeroSection';
@@ -8,6 +8,100 @@ import ArchitecturalPlanner from './components/ArchitecturalPlanner';
 import PanoramicViewer from './components/PanoramicViewer';
 import BookingForm from './components/BookingForm';
 import { Compass, Sparkles, Building2, SunDim, HelpCircle, MapPin, KeyRound, ArrowUpRight } from 'lucide-react';
+
+interface AmbientCardProps {
+  id: 'midnight' | 'gold' | 'silver';
+  title: string;
+  time: string;
+  description: string;
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  activeClass: string;
+  inactiveClass: string;
+  dataHoverLabel: string;
+}
+
+function AmbientCard({
+  id,
+  title,
+  time,
+  description,
+  active,
+  onClick,
+  icon,
+  activeClass,
+  inactiveClass,
+  dataHoverLabel,
+}: AmbientCardProps) {
+  // Use independent motion values to trace relative hover coordinate percentage [0.0, 1.0]
+  const x = useMotionValue(0.5);
+  const y = useMotionValue(0.5);
+
+  // Smooth transforms mapping mouse positions to tilt degrees
+  const rotateX = useTransform(y, [0, 1], [15, -15]);
+  const rotateY = useTransform(x, [0, 1], [-15, 15]);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const el = e.currentTarget;
+    const rect = el.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    
+    // Scale tracking values between 0 and 1
+    x.set(mouseX / rect.width);
+    y.set(mouseY / rect.height);
+  };
+
+  const handleMouseLeave = () => {
+    // Graceful return snap to default perspective when mouse departs
+    x.set(0.5);
+    y.set(0.5);
+  };
+
+  return (
+    <div style={{ perspective: 1200 }} className="w-full flex">
+      <motion.button
+        onClick={onClick}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        data-hover-label={dataHoverLabel}
+        style={{
+          rotateX,
+          rotateY,
+          transformStyle: 'preserve-3d',
+        }}
+        whileHover={{
+          scale: 1.03,
+          transition: { type: 'spring', stiffness: 300, damping: 20 },
+        }}
+        className={`p-6 rounded-lg border text-left flex flex-col gap-4 cursor-pointer transition-all duration-300 w-full ${
+          active ? activeClass : inactiveClass
+        }`}
+      >
+        <div 
+          style={{ transform: 'translateZ(30px)' }}
+          className={`w-10 h-10 rounded-full flex items-center justify-center border transition-all duration-300 ${
+            id === 'midnight' 
+              ? 'bg-black/80 text-luxury-gold border-white/10' 
+              : id === 'gold' 
+                ? 'bg-[#1b1502]/85 text-[#E5C158] border-[#e5c158]/10' 
+                : 'bg-[#0d1418]/85 text-[#8E929A] border-white/10'
+          }`}
+        >
+          {icon}
+        </div>
+        <div style={{ transform: 'translateZ(20px)' }} className="flex flex-col gap-1 w-full">
+          <span className="font-mono text-[9px] text-[#8E929A] tracking-wider block">{time}</span>
+          <h4 className="font-serif text-md text-white font-medium mt-1">{title}</h4>
+          <span className="text-[10px] text-[#8E929A] font-sans mt-2 block font-light leading-snug">
+            {description}
+          </span>
+        </div>
+      </motion.button>
+    </div>
+  );
+}
 
 export default function App() {
   const [loaded, setLoaded] = useState(false);
@@ -247,71 +341,44 @@ export default function App() {
                       {/* Right Column Interactive controls representing 3 atmospheric tones */}
                       <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-6 w-full pt-4 lg:pt-0">
                         
-                        {/* Midnight Obsidian */}
-                        <button
+                        <AmbientCard
+                          id="midnight"
+                          title="Obsidian Void"
+                          time="TIMESTEP 22:00"
+                          description="Deep matte blacks with low-amber contrast light."
+                          active={ambientTone === 'midnight'}
                           onClick={() => setAmbientTone('midnight')}
-                          data-hover-label="ATMOS_MID"
-                          className={`p-6 rounded-lg border text-left flex flex-col gap-4 cursor-pointer transition-all duration-500 ${
-                            ambientTone === 'midnight' 
-                              ? 'border-luxury-gold bg-black/60 shadow-[0_0_20px_rgba(212,175,55,0.1)] ring-1 ring-[#d4af37]/20' 
-                              : 'border-white/10 bg-black/20 hover:border-white/30'
-                          }`}
-                        >
-                          <div className="w-10 h-10 rounded-full bg-black/80 flex items-center justify-center text-luxury-gold border border-white/10">
-                            <KeyRound className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <span className="font-mono text-[9px] text-zinc-500 tracking-wider block">TIMESTEP 22:00</span>
-                            <h4 className="font-serif text-md text-white font-medium mt-1">Obsidian Void</h4>
-                            <span className="text-[10px] text-zinc-500 font-sans mt-2 block font-light leading-snug">
-                              Deep matte blacks with low-amber contrast light.
-                            </span>
-                          </div>
-                        </button>
+                          icon={<KeyRound className="w-4 h-4" />}
+                          activeClass="border-luxury-gold bg-black/60 shadow-[0_0_20px_rgba(212,175,55,0.1)] ring-1 ring-[#d4af37]/20"
+                          inactiveClass="border-white/10 bg-black/20 hover:border-white/30"
+                          dataHoverLabel="ATMOS_MID"
+                        />
 
-                        {/* Autumn Gold */}
-                        <button
+                        <AmbientCard
+                          id="gold"
+                          title="Autumn Amber"
+                          time="TIMESTEP 17:30"
+                          description="Rich golden reflection wrapping timber panels and brass."
+                          active={ambientTone === 'gold'}
                           onClick={() => setAmbientTone('gold')}
-                          data-hover-label="ATMOS_GOLD"
-                          className={`p-6 rounded-lg border text-left flex flex-col gap-4 cursor-pointer transition-all duration-500 ${
-                            ambientTone === 'gold' 
-                              ? 'border-[#e5c158] bg-[#141005]/60 shadow-[0_0_20px_rgba(229,193,88,0.15)] ring-1 ring-[#e5c158]/20' 
-                              : 'border-white/10 bg-black/20 hover:border-white/30'
-                          }`}
-                        >
-                          <div className="w-10 h-10 rounded-full bg-[#1b1502]/85 flex items-center justify-center text-[#E5C158] border border-[#e5c158]/10">
-                            <SunDim className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <span className="font-mono text-[9px] text-zinc-500 tracking-wider block">TIMESTEP 17:30</span>
-                            <h4 className="font-serif text-md text-white font-medium mt-1">Autumn Amber</h4>
-                            <span className="text-[10px] text-zinc-500 font-sans mt-2 block font-light leading-snug">
-                              Rich golden reflection wrapping timber panels and brass.
-                            </span>
-                          </div>
-                        </button>
+                          icon={<SunDim className="w-4 h-4" />}
+                          activeClass="border-[#e5c158] bg-[#141005]/60 shadow-[0_0_20px_rgba(229,193,88,0.15)] ring-1 ring-[#e5c158]/20"
+                          inactiveClass="border-white/10 bg-black/20 hover:border-white/30"
+                          dataHoverLabel="ATMOS_GOLD"
+                        />
 
-                        {/* Slate Platinum */}
-                        <button
+                        <AmbientCard
+                          id="silver"
+                          title="Slate Platinum"
+                          time="TIMESTEP 08:00"
+                          description="High-contrast northern light projecting clean steel lines."
+                          active={ambientTone === 'silver'}
                           onClick={() => setAmbientTone('silver')}
-                          data-hover-label="ATMOS_PLAT"
-                          className={`p-6 rounded-lg border text-left flex flex-col gap-4 cursor-pointer transition-all duration-500 ${
-                            ambientTone === 'silver' 
-                              ? 'border-white bg-[#0b1013]/60 shadow-[0_0_20px_rgba(255,255,255,0.08)] ring-1 ring-white/10' 
-                              : 'border-white/10 bg-black/20 hover:border-white/30'
-                          }`}
-                        >
-                          <div className="w-10 h-10 rounded-full bg-[#0d1418]/85 flex items-center justify-center text-[#8E929A] border border-white/10">
-                            <Building2 className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <span className="font-mono text-[9px] text-zinc-500 tracking-wider block">TIMESTEP 08:00</span>
-                            <h4 className="font-serif text-md text-white font-medium mt-1">Slate Platinum</h4>
-                            <span className="text-[10px] text-zinc-500 font-sans mt-2 block font-light leading-snug">
-                              High-contrast northern light projecting clean steel lines.
-                            </span>
-                          </div>
-                        </button>
+                          icon={<Building2 className="w-4 h-4" />}
+                          activeClass="border-white bg-[#0b1013]/60 shadow-[0_0_20px_rgba(255,255,255,0.08)] ring-1 ring-white/10"
+                          inactiveClass="border-white/10 bg-black/20 hover:border-white/30"
+                          dataHoverLabel="ATMOS_PLAT"
+                        />
 
                       </div>
 
